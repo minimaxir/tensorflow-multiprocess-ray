@@ -8,13 +8,13 @@ num_threads = 1
 concurrency = 4
 
 cluster_addresses = {
-    'worker': ["localhost:{}".format(3331 + i) for i in range(concurrency)],
-    'ps': ["localhost:3000"]
+    'ps': ["localhost:3000"],
+    'worker': ["localhost:{}".format(3331 + i) for i in range(concurrency)]
 }
 
 ray.init(num_cpus=num_threads,
-         object_store_memory=100 * 1000000,
-         redis_max_memory=100 * 1000000)
+         object_store_memory=10 * 1000000,
+         redis_max_memory=10 * 1000000)
 
 
 @ray.remote(num_cpus=num_threads / (concurrency+1))
@@ -62,8 +62,8 @@ class Worker(object):
             sleep(1.0)
             print("Worker %d: variables initialized" % worker_n)
 
-    def add(self):
-        self.sess.run(self.var.assign_add(1.0))
+    def add(self, value):
+        self.sess.run(self.var.assign_add(value))
         print(self.sess.run(self.var))
 
 
@@ -71,7 +71,7 @@ ps = ParameterServer.remote(cluster_addresses, num_threads)
 worker_list = [Worker.remote(cluster_addresses, i) for i in range(concurrency)]
 
 loop = asyncio.get_event_loop()
-tasks = [async_api.as_future(worker.add.remote())
-                for worker in worker_list]
+tasks = [async_api.as_future(worker.add.remote(value))
+         for value, worker in enumerate(worker_list)]
 loop.run_until_complete(
     asyncio.gather(*tasks))
