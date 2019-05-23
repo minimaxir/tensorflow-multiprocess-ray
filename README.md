@@ -4,9 +4,9 @@ A proof of concept on how to use TensorFlow in a multiprocess setting with a few
 
 * Can run all processes in a single thread and single machine. (e.g. good for Cloud Run)
 * Can run worker tasks asynchronously via `asyncio`. (e.g. model prediction)
-* Creates a single TensorFlow Session/Model to be shared by a worker thread.
+* Creates a single TensorFlow Session/Model to be shared by the worker processes.
 
-This POC leverages [ray](https://github.com/ray-project/ray) for its multiprocessing capabilities and Distributed TensorFlow for its session management (this is essentially a port of Matthew Rahtz's [Distributed TensorFlow Hello World](https://github.com/mrahtz/distributed_tensorflow_gentle_introduction) w/ ray). It is incredibly hacky, but it is necessary since `tf.Session()` does not play nice with multiple threads and/or processes.
+This POC leverages [ray](https://github.com/ray-project/ray) for its multiprocessing/colocation capabilities and Distributed TensorFlow for its session management (this is essentially a port of Matthew Rahtz's [Distributed TensorFlow Hello World](https://github.com/mrahtz/distributed_tensorflow_gentle_introduction) w/ ray + a few Pythonic improvements). It is incredibly hacky, but it is necessary since `tf.Session()` does not play nice with multiple threads and/or processes.
 
 ## Maintainer/Creator
 

@@ -5,7 +5,7 @@ import asyncio
 from ray.experimental import async_api
 
 num_threads = 1
-concurrency = 2
+concurrency = 4
 
 cluster_addresses = {
     'worker': ["localhost:{}".format(3331 + i) for i in range(concurrency)],
