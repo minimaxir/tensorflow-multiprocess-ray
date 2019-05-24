@@ -2,10 +2,16 @@ import tensorflow as tf
 import ray
 from time import sleep
 import asyncio
+import uvicorn
+import os
 from ray.experimental import async_api
+from starlette.applications import Starlette
+from starlette.responses import UJSONResponse
+from uvicorn.loops.uvloop import uvloop_setup
+
 
 num_threads = 1
-concurrency = 10
+concurrency = 4
 
 cluster_addresses = {
     'ps': ["localhost:3000"],
@@ -61,15 +67,34 @@ class Worker(object):
 
     def add(self, value):
         self.sess.run(self.var.assign_add(value))
-        print(self.sess.run(self.var))
+        sleep(1.0)
+        return self.sess.run(self.var)
 
 
 ps = ParameterServer.remote(cluster_addresses)
 worker_list = [Worker.remote(cluster_addresses, worker_n)
                for worker_n in range(concurrency)]
 
-loop = asyncio.get_event_loop()
-tasks = [async_api.as_future(worker.add.remote(value))
-         for value, worker in enumerate(worker_list)]
-loop.run_until_complete(
-    asyncio.gather(*tasks))
+app = Starlette(debug=False)
+num_requests = 0
+
+uvloop_setup()
+
+@app.route('/', methods=['GET'])
+async def homepage(request):
+    params = request.query_params
+    value = params.get('value', 1)
+
+    # Round-robin the Workers to distribute the load
+    global num_requests
+    worker = worker_list[num_requests % concurrency]
+    num_requests += 1
+
+    loop = asyncio.get_event_loop()
+    task = async_api.as_future(worker.add.remote(value))
+    result = loop.run_until_complete(task)
+
+    return UJSONResponse({'text': text})
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
