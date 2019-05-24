@@ -1,10 +1,8 @@
 import tensorflow as tf
 import ray
 from time import sleep
-import uvicorn
 import os
-from starlette.applications import Starlette
-from starlette.responses import UJSONResponse
+from flask import Flask, request, jsonify
 
 
 num_threads = 1
@@ -72,12 +70,12 @@ ps = ParameterServer.remote(cluster_addresses)
 worker_list = [Worker.remote(cluster_addresses, worker_n)
                for worker_n in range(concurrency)]
 
-app = Starlette(debug=False)
+app = Flask(__name__)
 num_requests = 0
 
 @app.route('/', methods=['GET'])
-async def homepage(request):
-    params = request.query_params
+def homepage():
+    params = request.args
     value = params.get('value', 1)
 
     # Round-robin the Workers to distribute the load
@@ -87,7 +85,7 @@ async def homepage(request):
 
     result = ray.get(worker.add.remote(value))
 
-    return UJSONResponse({'result': result})
+    return jsonify({'result': result})
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
