@@ -1,13 +1,10 @@
 import tensorflow as tf
 import ray
 from time import sleep
-import asyncio
 import uvicorn
 import os
-from ray.experimental import async_api
 from starlette.applications import Starlette
 from starlette.responses import UJSONResponse
-from uvicorn.loops.uvloop import uvloop_setup
 
 
 num_threads = 1
@@ -78,8 +75,6 @@ worker_list = [Worker.remote(cluster_addresses, worker_n)
 app = Starlette(debug=False)
 num_requests = 0
 
-uvloop_setup()
-
 @app.route('/', methods=['GET'])
 async def homepage(request):
     params = request.query_params
@@ -90,11 +85,9 @@ async def homepage(request):
     worker = worker_list[num_requests % concurrency]
     num_requests += 1
 
-    loop = asyncio.get_event_loop()
-    task = async_api.as_future(worker.add.remote(value))
-    result = loop.run_until_complete(task)
+    result = ray.get(worker.add.remote(value))
 
-    return UJSONResponse({'text': text})
+    return UJSONResponse({'text': result})
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
